@@ -1,6 +1,7 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const userModel = require("../model/User");
+const transporter = require("../config/nodeMailer");
 
 // Register controller function
 const register = async (req, res) => {
@@ -47,10 +48,26 @@ const register = async (req, res) => {
       maxAge: 5 * 24 * 60 * 60 * 1000, // Cookie expiration time: 5 days
     });
 
+    // Prepare the email options
+    const mailOptions = {
+      from: process.env.SENDER_EMAIL,
+      to: email,
+      subject: "Welcome to Fumuwee",
+      text: `Welcome to Fumuwee website, ${name}! Your account has been successfully created with the email ID: ${email}.`,
+    };
+
+    // Send the welcome email
+    try {
+      const info = await transporter.sendMail(mailOptions);
+      console.log("Welcome email sent successfully:", info.response);
+    } catch (emailError) {
+      console.error("Error sending welcome email:", emailError);
+    }
+
     // Respond with success and user details
     res.status(201).json({
       success: true,
-      message: "User registered successfully",
+      message: "User registered successfully. A welcome email has been sent.",
     });
   } catch (error) {
     console.log(error); // Log any errors that occur during registration
