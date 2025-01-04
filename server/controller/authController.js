@@ -61,5 +61,83 @@ const register = async (req, res) => {
   }
 };
 
+const login = async (req, res) => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({
+      success: false,
+      message: "missing fields, email & required",
+    });
+  }
+
+  //if we have the email add try-catch block
+  try {
+    const user = await userModel.findOne({ email });
+
+    if (!user) {
+      return res.json({
+        success: false,
+        message: "invalid email",
+      });
+    }
+
+    // if the user exist in the DB chech the password
+
+    const isMatch = await bcrypt.compare(password, user.password);
+
+    if (!isMatch) {
+      // if password nt matching
+      return res.json({
+        success: false,
+        message: "password not matching",
+      });
+    }
+
+    // generate a token if all the conditions matchhes
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+      expiresIn: "3d", // The token will expire in 3 days
+    });
+
+    // Set a cookie in the user's browser with the generated token
+    res.cookie("token", token, {
+      httpOnly: true, // The cookie is accessible only via HTTP(S), not JavaScript
+      secure: process.env.NODE_ENV === "production", // Use secure cookies in production
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "strict", // SameSite attribute for CSRF protection
+      maxAge: 5 * 24 * 60 * 60 * 1000, // Cookie expiration time: 5 days
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Logged in successfully",
+    });
+  } catch (error) {
+    console.log(error); // Log any errors that occur during registration
+    res.status(500).json({
+      success: false,
+      message: "Some error occurred", // Respond with a 500 error for any unexpected issues
+    });
+  }
+};
+
+const logout = async (req, res) => {
+  try {
+    res.clearCookie("token", {
+      httpOnly: true, // The cookie is accessible only via HTTP(S), not JavaScript
+      secure: process.env.NODE_ENV === "production", // Use secure cookies in production
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "strict", // SameSite attribute for CSRF protection
+    });
+    return res.status(200).json({
+      success: true,
+      message: "logged out",
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      success: false,
+      message: "something went wrong",
+    });
+  }
+};
 // Export the controller function for use in routes
-module.exports = { register };
+module.exports = { register, login, logout };
