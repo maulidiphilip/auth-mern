@@ -6,6 +6,7 @@ const cookieParser = require("cookie-parser");
 const dbConnect = require("./config/mongoDb");
 
 const authRouter = require("./routes/authRoutes");
+const userRouter = require("./routes/userRoute");
 
 const app = express();
 dotenv.config();
@@ -24,4 +25,7 @@ app.get("/", (req, res) => res.send("API now works!"));
 
 // auth route
 app.use("/api/auth/", authRouter);
+
+// user route
+app.use("/api/user/", userRouter);
 app.listen(port, () => console.log(`Server staeted on port: ${port}`));
