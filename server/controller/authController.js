@@ -285,6 +285,140 @@ const verifyEmail = async (req, res) => {
   }
 };
 
+// function to check if user already authenticated
+const isAuthenticated = async (req, res) => {
+  try {
+    return res.json({ success: true });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      success: false,
+      message: "An unexpected error occurred. Please try again.", // Respond with a generic error message
+    });
+  }
+};
+
+// a function to reset password otp
+const sendResetOtp = async (req, res) => {
+  const { email } = req.body;
+  // chech if email available or not
+  if (!email) {
+    return res.status(400).json({
+      success: false,
+      message: "Email required", // Respond if the email does not exist
+    });
+  }
+  try {
+    const user = await userModel.findOne({ email });
+    // if user not available
+    if (!user) {
+      return res.json({
+        success: false,
+        message: "User not Found",
+      });
+    }
+
+    // if user is available with the email provided generate the OTP an store it in the database, & send it to email
+    const otp = String(Math.floor(100000 + Math.random() * 900000)); // Generate a random 6-digit OTP
+    user.resetotp = otp;
+
+    // Set the expiry time for this OTP (15 minutes from now)
+    user.resetotpExpireAt = Date.now() + 15 * 60 * 1000;
+
+    // Save the user with the new OTP and expiry time in the database
+    await user.save();
+
+    // Prepare the email options for sending the OTP
+    const mailOptions = {
+      from: process.env.SENDER_EMAIL, // Sender's email address
+      to: user.email, // User's/receiver email address
+      subject: "Password reset OTP", // Subject of the email
+      text: `Your OTP for resetting your password is ${otp}. Use this OTP to proceed with reseting your password.`, // Email content
+    };
+
+    // Send the email containing the OTP
+    try {
+      const info = await transporter.sendMail(mailOptions);
+      console.log("OTP code sent successfully:", info.response); // Log email success
+    } catch (emailError) {
+      console.error("Error sending OTP:", emailError); // Log email error
+      return res.status(500).json({
+        success: false,
+        message: "Failed to send OTP. Please try again later.", // Respond with an error message
+      });
+    }
+    res.status(201).json({
+      success: true,
+      message: "OTP sent to your email",
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      success: false,
+      message: "An unexpected error occurred. Please try again.", // Respond with a generic error message
+    });
+  }
+};
+// verify OTP & and reset the password
+const resetPassword = async (req, res) => {
+  const { email, otp, newPassword } = req.body;
+
+  if (!email || !otp || !newPassword) {
+    res.status(400).json({
+      success: false,
+      message: "Email, OTP, & new Password required",
+    });
+  }
+
+  try {
+    const user = await userModel.findOne({ email });
+
+    if (!user) {
+      // user not available
+      return res.json({
+        success: false,
+        message: "User not Found",
+      });
+    }
+
+    if (user.resetotp === "" || user.resetotp !== otp) {
+      return res.json({
+        success: false,
+        message: "Invalid OTP",
+      });
+    }
+
+    if (user.resetotpExpireAt < Date.now()) {
+      return res.json({
+        success: false,
+        message: "OTP already expired",
+      });
+    }
+
+    // otp valid
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // store it in the database
+    user.password = hashedPassword;
+
+    // reset the otp
+    user.resetotp = "";
+
+    user.resetotpExpireAt = 0;
+
+    await user.save(); // new details save to the database
+    res.status(201).json({
+      success: true,
+      message: "Password reset successful",
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      success: false,
+      message: "An unexpected error occurred. Please try again.", // Respond with a generic error message
+    });
+  }
+};
 // Export the controller function for use in routes
 module.exports = {
   register,
@@ -292,4 +426,7 @@ module.exports = {
   logout,
   sendVerifyOtp,
   verifyEmail,
+  isAuthenticated,
+  sendResetOtp,
+  resetPassword,
 };
