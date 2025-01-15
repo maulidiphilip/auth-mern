@@ -33,6 +33,32 @@ const Header = () => {
     }
   };
 
+  // a function to to verify an account
+  const sendVerificationOtp = async () => {
+    try {
+      axios.defaults.withCredentials = true;
+
+      // API call to send OTP
+      const { data } = await axios.post(
+        backendURL + "/api/auth/send-verify-otp"
+      );
+
+      // Check response and handle success
+      if (data?.success) {
+        toast.success(data.message || "OTP sent successfully!");
+        navigate("/email-verify");
+      } else {
+        toast.error(data.message || "Failed to send OTP. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error sending OTP:", error.message); // Log for debugging
+      toast.error(
+        error.response?.data?.message ||
+          "Something went wrong. Please try again."
+      );
+    }
+  };
+
   return (
     <div className="w-full flex justify-between items-center p-4 sm:p-6 sm:px-24 absolute top-0">
       <img src={assets.logo} alt="Logo" className="w-28 sm:w-32" />
@@ -44,7 +70,10 @@ const Header = () => {
             <ul className="list-none m-0 p-2 bg-gray-100 text-sm">
               {/* if user already verified hide the verify option */}
               {!userData.isVerified && (
-                <li className="py-1 px-2 p-2 hover:bg-gray-200 cursor-pointer">
+                <li
+                  onClick={sendVerificationOtp}
+                  className="py-1 px-2 p-2 hover:bg-gray-200 cursor-pointer"
+                >
                   Verify Email
                 </li>
               )}
