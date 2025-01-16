@@ -1,10 +1,14 @@
 import { useNavigate } from "react-router-dom";
 import { assets } from "../assets/assets";
-import React, { useState } from "react";
+import React, { useContext, useState } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
+import { AppContext } from "../store/AppContext";
 
 const ResetPassword = () => {
+  const { backendURL } = useContext(AppContext);
+  axios.defaults.withCredentials = true;
+
   const navigate = useNavigate();
   const inputRefs = React.useRef([]);
   axios.defaults.withCredentials = true;
@@ -47,6 +51,45 @@ const ResetPassword = () => {
       toast.error("Invalid code length");
     }
   };
+
+  // a function to handle the email used to reset your password
+  const onSubmitEmail = async (e) => {
+    e.preventDefault();
+    try {
+      const { data } = await axios.post(
+        backendURL + "/api/auth/send-reset-otp",
+        { email }
+      );
+      data.success ? toast.success(data.message) : toast.error(data.message);
+      data.success && setIsEmailSent(true);
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Something went wrong.");
+    }
+  };
+
+  // function to handle the submiting OTP to handle password reset
+  const onSubmitOtp = async (e) => {
+    e.preventDefault();
+    const otpArray = inputRefs.current.map((e) => e.value);
+    setOtp(otpArray.join(""));
+    setOtpIsSubmitted(true);
+  };
+
+  // function to change the password to new
+  const onSubmitNewPassword = async (e) => {
+    e.preventDefault();
+    try {
+      const { data } = await axios.post(
+        backendURL + "/api/auth/reset-password",
+        { email, otp, newPassword }
+      );
+
+      data.success ? toast.success(data.message) : toast.error(data.message);
+      data.success && navigate("/login");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Something went wrong.");
+    }
+  };
   return (
     <div className="flex items-center justify-center min-h-screen  bg-gradient-to-br from-blue-200 to-purple-400">
       <img
@@ -56,7 +99,10 @@ const ResetPassword = () => {
         className="absolute left-5 sm:left-20 top-5 w-28 sm:w-32 cursor-pointer"
       />
       {!isEmailSent && (
-        <form className="bg-slate-900 p-8 rounded-lg shadow-lg w-96 text-sm">
+        <form
+          onSubmit={onSubmitEmail}
+          className="bg-slate-900 p-8 rounded-lg shadow-lg w-96 text-sm"
+        >
           <h1 className="text-white text-2xl font-semibold text-center mb-4">
             Reset Password
           </h1>
@@ -80,7 +126,10 @@ const ResetPassword = () => {
 
       {/* a new form for adding otp */}
       {!isOtpSubmitted && isEmailSent && (
-        <form className="bg-slate-900 p-8 rounded-lg shadow-lg w-96 text-sm">
+        <form
+          onSubmit={onSubmitOtp}
+          className="bg-slate-900 p-8 rounded-lg shadow-lg w-96 text-sm"
+        >
           <h1 className="text-white text-2xl font-semibold text-center mb-4">
             Reset Password OTP
           </h1>
@@ -111,7 +160,10 @@ const ResetPassword = () => {
 
       {/* enter new password */}
       {isOtpSubmitted && isEmailSent && (
-        <form className="bg-slate-900 p-8 rounded-lg shadow-lg w-96 text-sm">
+        <form
+          onSubmit={onSubmitNewPassword}
+          className="bg-slate-900 p-8 rounded-lg shadow-lg w-96 text-sm"
+        >
           <h1 className="text-white text-2xl font-semibold text-center mb-4">
             New Password
           </h1>
