@@ -2,6 +2,10 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const userModel = require("../model/User");
 const transporter = require("../config/nodeMailer");
+const {
+  EMAIL_VERIFY_TEMPLATE,
+  PASSWORD_RESET_TEMPLATE,
+} = require("../config/emailTemplates");
 
 // Register controller function
 const register = async (req, res) => {
@@ -196,7 +200,11 @@ const sendVerifyOtp = async (req, res) => {
       from: process.env.SENDER_EMAIL, // Sender's email address
       to: user.email, // User's email address
       subject: "Account Verification OTP", // Subject of the email
-      text: `Your OTP is ${otp}. Please verify your account using this OTP.`, // Email content
+      // text: `Your OTP is ${otp}. Please verify your account using this OTP.`, // Email content
+      html: EMAIL_VERIFY_TEMPLATE.replace("{{otp}}", otp).replace(
+        "{{email}}",
+        user.email
+      ),
     };
 
     // Send the email containing the OTP
@@ -333,7 +341,11 @@ const sendResetOtp = async (req, res) => {
       from: process.env.SENDER_EMAIL, // Sender's email address
       to: user.email, // User's/receiver email address
       subject: "Password reset OTP", // Subject of the email
-      text: `Your OTP for resetting your password is ${otp}. Use this OTP to proceed with reseting your password.`, // Email content
+      // text: `Your OTP for resetting your password is ${otp}. Use this OTP to proceed with reseting your password.`, // Email content
+      html: PASSWORD_RESET_TEMPLATE.replace("{{otp}}", otp).replace(
+        "{{email}}",
+        user.email
+      ),
     };
 
     // Send the email containing the OTP
